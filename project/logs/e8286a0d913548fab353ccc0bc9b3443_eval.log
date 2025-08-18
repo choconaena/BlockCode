@@ -1,4 +1,50 @@
-Traceback (most recent call last):
-  File "/home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/evaluation.py", line 7, in <module>
-    from model import build_model, load_model
-ImportError: cannot import name 'build_model' from 'model' (/home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/model.py)
+[eval][2025-08-18 16:08:08] === EVALUATION START ===
+[eval][2025-08-18 16:08:08] Using device: cuda
+[eval][2025-08-18 16:08:08] Test data loaded: 8277 samples
+Model created with 804,554 parameters
+Model loaded from /home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/artifacts/best_model.pth
+[eval][2025-08-18 16:08:08] Running inference...
+
+Evaluating:   0%|          | 0/65 [00:00<?, ?it/s]
+Evaluating:   2%|▏         | 1/65 [00:00<00:31,  2.05it/s]
+Evaluating: 100%|██████████| 65/65 [00:00<00:00, 113.67it/s]
+[eval][2025-08-18 16:08:09] 
+Calculating metrics...
+[eval][2025-08-18 16:08:11] Accuracy: 0.9053
+[eval][2025-08-18 16:08:11] 
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.94      0.97      0.95       836
+           1       0.92      0.96      0.94       903
+           2       0.91      0.86      0.88       825
+           3       0.90      0.88      0.89       854
+           4       0.89      0.92      0.91       784
+           5       0.90      0.87      0.88       755
+           6       0.93      0.95      0.94       838
+           7       0.90      0.91      0.90       857
+           8       0.89      0.87      0.88       767
+           9       0.88      0.87      0.87       858
+
+    accuracy                           0.91      8277
+   macro avg       0.90      0.90      0.90      8277
+weighted avg       0.91      0.91      0.90      8277
+
+[eval][2025-08-18 16:08:11] 
+Confusion Matrix:
+[[808   0   6   0   2   7   7   0   5   1]
+ [  1 866  11   4   2   7   1   1   8   2]
+ [ 10  11 708  13  15   1  21  18  26   2]
+ [  8   7  22 748   2  23   5  17  10  12]
+ [  1   5   5   1 724   0  11   2   6  29]
+ [  5  13   6  29  11 655  10   2  12  12]
+ [  4   4   1   0   9  14 796   6   4   0]
+ [  6  13  12   4  10   0   0 779   2  31]
+ [  5  24   6  20   8  18   7   0 664  15]
+ [  9   3   4  14  28   4   0  45   6 745]]
+[eval][2025-08-18 16:08:12] Confusion matrix saved to /home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/artifacts/confusion_matrix.png
+[eval][2025-08-18 16:08:13] Prediction samples saved to /home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/artifacts/prediction_samples.png
+[eval][2025-08-18 16:08:13] Misclassified samples saved to /home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/artifacts/misclassified_samples.png
+[eval][2025-08-18 16:08:13] 
+Results saved to /home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/artifacts/evaluation_results.json
+[eval][2025-08-18 16:08:13] === EVALUATION DONE ===
