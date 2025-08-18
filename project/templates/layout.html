@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}블록코딩 AI 파이프라인{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="sidebar">
+    {% include 'sidebar.html' %}
+  </div>
+
+  <div class="main">
+    <div class="tabs">
+      <button id="tab-code" class="active">코드</button>
+      <button id="tab-data">데이터 구조</button>
+      <!-- 🔹 로그 탭 추가 -->
+      <button id="tab-log">로그</button>
+    </div>
+
+    <div id="content-code" class="tab-content active">
+      {% include 'main_code.html' %}
+    </div>
+
+    <div id="content-data" class="tab-content">
+      {% include 'main_data.html' %}
+    </div>
+
+    <!-- 🔹 로그 컨텐츠 추가 -->
+    <div id="content-log" class="tab-content">
+      {% include 'main_log.html' %}
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/data_info.js') }}"></script>
+  <!-- 🔹 로그 실행/SSE 스트림 JS 추가 -->
+  <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+
+  <script>
+    (function(){
+      // ---- 사용자별 키 (uid 쿠키 없으면 guest) ----
+      function getCookie(name){
+        const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : '';
+      }
+      const uid = getCookie('uid') || 'guest';
+      const KEY_MAIN = `aiBlocks:main:${uid}`;   // 'code' | 'data' | 'log'  ← 🔹 log 추가
+      const KEY_LEFT = `aiBlocks:left:${uid}`;   // 'pre'|'model'|'train'|'eval'
+      const KEY_CODE = `aiBlocks:code:${uid}`;   // 'pre'|'model'|'train'|'eval'
+      const KEY_FORM = `aiBlocks:form:${uid}`;
+
+      // ---- 폼 값 저장/복원 (LocalStorage) ----
+      function saveForm(){
+        const form = document.querySelector('form');
+        if(!form) return;
+        const data = {};
+        const fd = new FormData(form);
+        // 같은 name 여러개(체크박스 등)는 배열로 저장
+        for (const [k,v] of fd.entries()){
+          if (k in data){
+            Array.isArray(data[k]) ? data[k].push(v) : data[k]=[data[k], v];
+          } else data[k]=v;
+        }
+        localStorage.setItem(KEY_FORM, JSON.stringify(data));
+      }
+      function restoreForm(){
+        const form = document.querySelector('form');
+        if(!form) return;
+        const raw = localStorage.getItem(KEY_FORM);
+        if(!raw) return;
+        let s; try{s=JSON.parse(raw)}catch(e){return;}
+        for (const [name,val] of Object.entries(s)){
+          const nodes = form.querySelectorAll(`[name="${name}"]`);
+          if(!nodes.length) continue;
+          nodes.forEach(el=>{
+            const type=(el.type||'').toLowerCase(), tag=el.tagName.toLowerCase();
+            if (type==='checkbox'){
+              if (Array.isArray(val)) el.checked = val.map(String).includes(String(el.value));
+              else el.checked = (String(val)==='on' || String(val)==='true' || String(val)===String(el.value));
+            } else if (type==='radio'){
+              el.checked = (String(el.value)===String(val));
+            } else if (tag==='select'){
+              if (el.multiple && Array.isArray(val)){
+                [...el.options].forEach(opt => opt.selected = val.map(String).includes(String(opt.value)));
+              } else el.value = val;
+            } else {
+              el.value = Array.isArray(val) ? val[0] : val;
+            }
+            el.dispatchEvent(new Event('change',{bubbles:true}));
+          });
+        }
+      }
+
+      // ---- 탭 저장/복원 ----
+      function switchTab(active){  // 'code' | 'data' | 'log'
+        document.getElementById('tab-code')?.classList.toggle('active', active==='code');
+        document.getElementById('tab-data')?.classList.toggle('active', active==='data');
+        document.getElementById('tab-log') ?.classList.toggle('active', active==='log');
+
+        document.getElementById('content-code')?.classList.toggle('active', active==='code');
+        document.getElementById('content-data')?.classList.toggle('active', active==='data');
+        document.getElementById('content-log') ?.classList.toggle('active', active==='log');
+      }
+
+      function restoreTabs(){
+        // 메인 탭 복원 (log까지 포함)
+        const main = localStorage.getItem(KEY_MAIN);
+        if (main==='data') document.getElementById('tab-data')?.click();
+        else if (main==='log') document.getElementById('tab-log')?.click();
+        else document.getElementById('tab-code')?.click();
+
+        // 코드 탭
+        const code = localStorage.getItem(KEY_CODE) || 'pre';
+        document.querySelector(`.stage-tab[data-stage="${code}"]`)?.click();
+
+        // 좌측 탭
+        const left = localStorage.getItem(KEY_LEFT) || 'pre';
+        document.querySelector(`.left-tab[data-tab="${left}"]`)?.click();
+      }
+
+      // DOM 준비되면 폼 복원 + 이벤트 등록
+      document.addEventListener('DOMContentLoaded', ()=>{
+        restoreForm();
+        const form = document.querySelector('form');
+        if (form){
+          form.addEventListener('input',  saveForm);
+          form.addEventListener('change', saveForm);
+          // submit 시 비활성 요소도 제출되도록 강제 enable
+          form.addEventListener('submit', ()=>{
+            document.querySelectorAll('.block input, .block select, .block textarea').forEach(el=> el.disabled=false);
+            saveForm();
+          });
+        }
+
+        // 탭 클릭 시 저장 (🔹 log 추가)
+        document.getElementById('tab-code')?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'code'); switchTab('code');});
+        document.getElementById('tab-data')?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'data'); switchTab('data');});
+        document.getElementById('tab-log') ?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'log');  switchTab('log'); });
+
+        // 코드/좌측 스테이지 탭 저장 (이미 페이지 내에 존재한다는 가정)
+        document.querySelectorAll('.stage-tab').forEach(b=>{
+          b.addEventListener('click', ()=> localStorage.setItem(KEY_CODE, b.dataset.stage||'pre'));
+        });
+        document.querySelectorAll('.left-tab').forEach(b=>{
+          b.addEventListener('click', ()=> localStorage.setItem(KEY_LEFT, b.dataset.tab||'pre'));
+        });
+      });
+
+      // 모든 초기화 스크립트(tabs.js/sidebar.js)가 끝난 뒤 최종 복원
+      window.addEventListener('load', restoreTabs);
+    })();
+  </script>
+</body>
+</html>

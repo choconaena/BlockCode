@@ -1,0 +1,188 @@
+{% extends 'layout.html' %}
+
+{% block sidebar %}
+  {% include 'sidebar.html' %}
+{% endblock %}
+
+{% block main %}
+  <div class="tabs">
+    <button id="tab-code" class="active">코드</button>
+    <button id="tab-data">데이터 구조</button>
+  </div>
+
+  <div id="content-code" class="tab-content active">
+    {% include 'main_code.html' %}
+  </div>
+
+  <div id="content-data" class="tab-content">
+    {% include 'main_data.html' %}
+  </div>
+
+  <!-- 1) 서버 머지 상태(JSON) 안전 주입 -->
+  <script type="application/json" id="form-state">
+    {{ form_state|default({})|tojson|safe }}
+  </script>
+
+  <!-- 2) 상태 복원 + 탭 유지 (A안: localStorage, 재보정 포함) -->
+  <script>
+    // -------- 공통 유틸 --------
+    function getCookie(name) {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    const uid = getCookie('uid') || 'guest';
+    const KEY_MAIN = `aiBlocks:main:${uid}`;   // 'code' | 'data'
+    const KEY_LEFT = `aiBlocks:left:${uid}`;   // 'pre'|'model'|'train'|'eval'
+    const KEY_CODE = `aiBlocks:code:${uid}`;   // 'pre'|'model'|'train'|'eval'
+
+    function readFormStateFromScript() {
+      const el = document.getElementById('form-state');
+      try { return el ? JSON.parse(el.textContent) : {}; }
+      catch(e) { console.error('[formState] parse error:', e); return {}; }
+    }
+
+    // -------- 탭 토글 --------
+    function activateMain(which) {
+      const tabCode  = document.getElementById('tab-code');
+      const tabData  = document.getElementById('tab-data');
+      const contCode = document.getElementById('content-code');
+      const contData = document.getElementById('content-data');
+      if (!tabCode || !tabData || !contCode || !contData) return;
+      tabCode.classList.toggle('active', which === 'code');
+      tabData.classList.toggle('active', which === 'data');
+      contCode.classList.toggle('active', which === 'code');
+      contData.classList.toggle('active', which === 'data');
+      localStorage.setItem(KEY_MAIN, which);
+    }
+    function activateLeft(tab) {
+      const tabs  = document.querySelectorAll('.left-tab');
+      const panes = document.querySelectorAll('.pane'); // #pane-pre 등
+      tabs.forEach(t => t.classList.remove('active'));
+      panes.forEach(p => p.style.display = 'none');
+      const btn  = document.querySelector(`.left-tab[data-tab="${tab}"]`);
+      const pane = document.getElementById(`pane-${tab}`);
+      if (btn && pane) {
+        btn.classList.add('active');
+        pane.style.display = '';
+        localStorage.setItem(KEY_LEFT, tab);
+      }
+    }
+    function activateCode(stage) {
+      const tabs  = document.querySelectorAll('.stage-tab');
+      const panes = document.querySelectorAll('.stage-pane'); // #pane-code-*
+      tabs.forEach(t => t.classList.remove('active'));
+      panes.forEach(p => p.hidden = true);
+      const btn  = document.querySelector(`.stage-tab[data-stage="${stage}"]`);
+      const pane = document.getElementById(`pane-code-${stage}`);
+      if (btn && pane) {
+        btn.classList.add('active');
+        pane.hidden = false;
+        localStorage.setItem(KEY_CODE, stage);
+      }
+    }
+
+    // -------- 폼 복원(체크박스/라디오/멀티셀렉트). 기본은 change 이벤트 발화 안 함 --------
+    function restoreFormState(stateObj, {triggerChange=false} = {}) {
+      if (!stateObj || typeof stateObj !== 'object') return;
+      for (const [name, val] of Object.entries(stateObj)) {
+        const nodes = document.querySelectorAll(`[name="${CSS.escape(name)}"]`);
+        if (!nodes.length) continue;
+
+        nodes.forEach(el => {
+          const tag  = el.tagName.toLowerCase();
+          const type = (el.type || '').toLowerCase();
+
+          if (type === 'checkbox') {
+            if (Array.isArray(val)) {
+              el.checked = val.map(String).includes(String(el.value));
+            } else {
+              el.checked = (String(val) === 'on' || String(val) === 'true' || String(val) === String(el.value));
+            }
+          } else if (type === 'radio') {
+            el.checked = (String(el.value) === String(val));
+          } else if (tag === 'select') {
+            if (el.multiple && Array.isArray(val)) {
+              [...el.options].forEach(opt => { opt.selected = val.map(String).includes(String(opt.value)); });
+            } else {
+              el.value = val;
+            }
+          } else {
+            el.value = Array.isArray(val) ? val[0] : val;
+          }
+
+          if (triggerChange) {
+            el.dispatchEvent(new Event('input', { bubbles:true }));
+            el.dispatchEvent(new Event('change', { bubbles:true }));
+          }
+        });
+      }
+    }
+
+    // -------- 초기화/리스너 등록 --------
+    function wireTabClickHandlers() {
+      const tabCode = document.getElementById('tab-code');
+      const tabData = document.getElementById('tab-data');
+      if (tabCode) tabCode.addEventListener('click', () => activateMain('code'));
+      if (tabData) tabData.addEventListener('click', () => activateMain('data'));
+
+      document.querySelectorAll('.left-tab').forEach(btn => {
+        btn.addEventListener('click', () => activateLeft(btn.getAttribute('data-tab') || 'pre'));
+      });
+      document.querySelectorAll('.stage-tab').forEach(btn => {
+        btn.addEventListener('click', () => activateCode(btn.getAttribute('data-stage') || 'pre'));
+      });
+    }
+
+    function restoreTabsFromStorage() {
+      const mainSaved = localStorage.getItem(KEY_MAIN);
+      if (mainSaved === 'code' || mainSaved === 'data') activateMain(mainSaved);
+      const leftSaved = localStorage.getItem(KEY_LEFT);
+      if (leftSaved) activateLeft(leftSaved);
+      const codeSaved = localStorage.getItem(KEY_CODE);
+      if (codeSaved) activateCode(codeSaved);
+    }
+
+    function wireFormSubmitPersist() {
+      const form = document.getElementById('main-form') || document.querySelector('form');
+      if (!form) return;
+      form.addEventListener('submit', () => {
+        const leftActive = document.querySelector('.left-tab.active');
+        const codeActive = document.querySelector('.stage-tab.active');
+        if (leftActive) localStorage.setItem(KEY_LEFT, leftActive.getAttribute('data-tab') || 'pre');
+        if (codeActive) localStorage.setItem(KEY_CODE, codeActive.getAttribute('data-stage') || 'pre');
+        const isCodeMain = document.getElementById('content-code')?.classList.contains('active');
+        localStorage.setItem(KEY_MAIN, isCodeMain ? 'code' : 'data');
+      });
+    }
+
+    // 1차: DOMContentLoaded 시점
+    document.addEventListener('DOMContentLoaded', () => {
+      wireTabClickHandlers();
+      wireFormSubmitPersist();
+
+      // (1) 먼저 값 복원 (변경 이벤트 발화 X)
+      restoreFormState(readFormStateFromScript(), {triggerChange:false});
+
+      // (2) 탭 복원
+      restoreTabsFromStorage();
+
+      // (3) 한 프레임 뒤에 재보정 (다른 스크립트가 초기화했다면 다시 덮어쓰기)
+      requestAnimationFrame(() => {
+        restoreFormState(readFormStateFromScript(), {triggerChange:false});
+        restoreTabsFromStorage();
+      });
+    });
+
+    // 2차: window.load (이미지/폰트 등 리소스까지 로드된 후 다시 한 번)
+    window.addEventListener('load', () => {
+      restoreFormState(readFormStateFromScript(), {triggerChange:false});
+      restoreTabsFromStorage();
+
+      // 지연 초기화가 있는 경우를 대비해 소폭 딜레이 재보정
+      setTimeout(() => {
+        restoreFormState(readFormStateFromScript(), {triggerChange:false});
+        restoreTabsFromStorage();
+      }, 120);
+    });
+  </script>
+{% endblock %}

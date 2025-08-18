@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/bm_ai/project/workspace/e8286a0d913548fab353ccc0bc9b3443/training.py", line 17, in <module>
+    optimizer = optim.Adam(model.parameters(), lr=1e-05)
+                           ^^^^^
+NameError: name 'model' is not defined

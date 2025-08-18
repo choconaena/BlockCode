@@ -1,0 +1,32 @@
+<div style="margin:.5rem 0; display:flex; gap:.5rem; flex-wrap:wrap;">
+  <button class="btn" data-run="pre">전처리 실행</button>
+  <button class="btn" data-run="model">모델설계(테스트) 실행</button>
+  <button class="btn" data-run="train">학습 실행</button>
+  <button class="btn" data-run="eval">평가 실행</button>
+
+  <button class="btn" id="log-clear">로그 지우기</button>
+  <label style="display:flex; align-items:center; gap:.25rem;">
+    <input type="checkbox" id="log-autoscroll" checked>
+    자동 스크롤
+  </label>
+</div>
+
+<pre id="log-view"
+     style="height:320px; overflow:auto; background:#111; color:#ddd; padding:8px; border-radius:6px;"></pre>
+
+<div style="font-size:.9em; color:#888; margin-top:.25rem;">
+  * 실행 중 표준출력이 실시간으로 표시됩니다. (SSE)
+</div>
+
+<script>
+  (function(){
+    const logView = document.getElementById('log-view');
+    const clearBtn = document.getElementById('log-clear');
+    const autoChk = document.getElementById('log-autoscroll');
+
+    document.addEventListener('aib-log-line', ()=>{
+      if (autoChk?.checked && logView) logView.scrollTop = logView.scrollHeight;
+    });
+    clearBtn?.addEventListener('click', ()=> { if (logView) logView.textContent=''; });
+  })();
+</script>

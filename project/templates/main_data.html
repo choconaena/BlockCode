@@ -1,0 +1,15 @@
+<label>데이터셋:</label>
+<select id="data-select">
+  {% for f in options %}<option>{{f}}</option>{% endfor %}
+</select>
+<div class="data-controls">
+  <label>항목:</label>
+  <select id="info-type">
+    <option value="shape">행/열 수</option>
+    <option value="structure">구조</option>
+    <option value="sample">샘플 보기</option>
+    <option value="images">이미지 보기</option>
+  </select>
+  <input type="number" id="param-n" value="5" min="1" hidden>
+</div>
+<div id="data-info" class="data-info"></div>
