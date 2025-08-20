@@ -57,12 +57,18 @@ class WorkspaceManager:
     @staticmethod
     def get_or_create_uid(response=None):
         """UID 가져오기 또는 생성"""
-        uid = request.cookies.get("uid")
+        # 🔹 쿠키 대신 요청 파라미터에서 user_id 가져오기
+        uid = request.form.get("user_id") or request.args.get("user_id")
         created = False
         
         if not uid:
-            uid = uuid4().hex
+            # 🔹 아이디가 없으면 기본값 설정 (또는 에러 처리)
+            uid = "anonymous"
             created = True
+        
+        # 🔹 안전한 파일명으로 변환 (특수문자 제거)
+        import re
+        uid = re.sub(r'[^a-zA-Z0-9_-]', '_', uid)[:50]  # 최대 50자, 안전한 문자만
         
         workspace_path = WORKSPACE_DIR / uid
         workspace_path.mkdir(parents=True, exist_ok=True)
@@ -72,7 +78,7 @@ class WorkspaceManager:
             readme_path.write_text(
                 "AI 블록코딩 워크스페이스\n"
                 f"생성일시: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"UID: {uid}\n",
+                f"User ID: {uid}\n",
                 encoding="utf-8"
             )
             
@@ -80,8 +86,9 @@ class WorkspaceManager:
             (workspace_path / "artifacts").mkdir(exist_ok=True)
             (workspace_path / "logs").mkdir(exist_ok=True)
             
-            if response:
-                response.set_cookie("uid", uid, httponly=True, samesite="Lax")
+            # 🔹 쿠키 설정 제거 (더 이상 필요 없음)
+            # if response:
+            #     response.set_cookie("uid", uid, httponly=True, samesite="Lax")
         
         return uid, workspace_path
     
@@ -319,11 +326,12 @@ class ProcessManager:
 @app.route("/")
 def home():
     """홈 페이지 - /app으로 리다이렉트"""
-    resp = make_response(redirect(url_for("main_app")))
-    WorkspaceManager.get_or_create_uid(resp)
-    return resp
+    # resp = make_response(redirect(url_for("main_app")))
+    # WorkspaceManager.get_or_create_uid(resp)
+    # return resp
+    return redirect(url_for("main_app"))
 
-
+'''
 @app.route("/app")
 def main_app():
     """메인 애플리케이션 페이지"""
@@ -338,8 +346,31 @@ def main_app():
     
     resp.set_data(render_template("index.html", **context))
     return resp
+'''
 
+@app.route("/app")
+def main_app():
+    """메인 애플리케이션 페이지"""
+    # 🔹 user_id 파라미터로 UID 가져오기
+    user_id = request.args.get("user_id", "anonymous")
+    
+    # 안전한 파일명으로 변환
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:50]
+    
+    workspace_path = WORKSPACE_DIR / uid
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    
+    context = {
+        "options": DatasetManager.list_datasets(),
+        "form_state": WorkspaceManager.load_inputs(uid),
+        "current_user_id": user_id,  # 🔹 템플릿에 전달
+        **WorkspaceManager.load_snippets(uid)
+    }
+    
+    return render_template("index.html", **context)
 
+'''
 @app.route("/convert", methods=["POST"])
 def convert():
     """코드 변환 API - 텍스트 응답 + CORS 지원"""
@@ -405,7 +436,77 @@ def convert():
         response.headers['Access-Control-Allow-Origin'] = '*'
         
         return response
+'''
 
+@app.route("/convert", methods=["POST"])
+def convert():
+    """코드 변환 API - 사용자 ID 기반"""
+    uid, _ = WorkspaceManager.get_or_create_uid()
+    stage = request.form.get("stage", "all")
+    
+    # 🔹 사용자 ID 검증
+    if uid == "anonymous" and not request.form.get("user_id"):
+        error_msg = "사용자 ID가 필요합니다."
+        response = make_response(error_msg, 400)
+        response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
+    
+    print(f"[INFO] /convert 요청: stage={stage}, user_id={uid}")
+    
+    code_gen = CodeGenerator()
+    
+    try:
+        if stage == "all":
+            all_codes = {}
+            for s in ["pre", "model", "train", "eval"]:
+                code = code_gen.generate(s, request.form)
+                WorkspaceManager.save_code(uid, s, code)
+                WorkspaceManager.save_inputs(uid, s, request.form)
+                all_codes[s] = code
+            
+            combined_code = ""
+            stage_names = {
+                "pre": "전처리 (preprocessing.py)",
+                "model": "모델 설계 (model.py)", 
+                "train": "학습 (training.py)",
+                "eval": "평가 (evaluation.py)"
+            }
+            
+            for s in ["pre", "model", "train", "eval"]:
+                combined_code += f"# ========== {stage_names[s]} ==========\n\n"
+                combined_code += all_codes[s]
+                combined_code += "\n\n"
+            
+            response = make_response(combined_code)
+            response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+            
+            return response
+            
+        else:
+            code = code_gen.generate(stage, request.form)
+            WorkspaceManager.save_code(uid, stage, code)
+            WorkspaceManager.save_inputs(uid, stage, request.form)
+            
+            response = make_response(code)
+            response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+            
+            return response
+    
+    except Exception as e:
+        print(f"[ERROR] /convert: {e}")
+        error_msg = f"코드 생성 중 오류 발생: {str(e)}"
+        response = make_response(error_msg, 500)
+        response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        
+        return response
 
 # 🔹 OPTIONS 메서드 수동 처리 (preflight)
 @app.route("/convert", methods=["OPTIONS"])
@@ -418,11 +519,37 @@ def convert_options():
     response.headers['Access-Control-Max-Age'] = '86400'  # 24시간 캐시
     return response
 
-
 @app.route("/run/<stage>", methods=["POST"])
 def run_stage(stage):
-    """코드 실행 API"""
-    uid, _ = WorkspaceManager.get_or_create_uid()
+    """코드 실행 API - 사용자 ID 기반"""
+    # 🔹 여러 방식으로 사용자 ID 받기
+    user_id = None
+    
+    # 1. POST form-data에서
+    if request.form.get("user_id"):
+        user_id = request.form.get("user_id")
+    # 2. JSON에서
+    elif request.is_json and request.json and request.json.get("user_id"):
+        user_id = request.json.get("user_id")
+    # 3. 쿼리 파라미터에서
+    elif request.args.get("user_id"):
+        user_id = request.args.get("user_id")
+    
+    print(f"[DEBUG] /run/{stage} - 받은 user_id: '{user_id}'")
+    print(f"[DEBUG] request.form: {dict(request.form)}")
+    print(f"[DEBUG] request.args: {dict(request.args)}")
+    if request.is_json:
+        print(f"[DEBUG] request.json: {request.json}")
+    
+    if not user_id or user_id.strip() == "":
+        return jsonify({"error": "user_id가 필요합니다."}), 400
+    
+    # 안전한 파일명으로 변환
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id.strip())[:50]
+    
+    print(f"[DEBUG] 변환된 uid: '{uid}'")
+    
     result = ProcessManager.run_script(uid, stage)
     
     if "error" in result:
@@ -433,30 +560,40 @@ def run_stage(stage):
 
 @app.route("/logs/stream")
 def logs_stream():
-    """로그 스트리밍 API (SSE)"""
-    uid, _ = WorkspaceManager.get_or_create_uid()
+    """로그 스트리밍 API (SSE) - 사용자 ID 기반"""
+    # 🔹 쿼리 파라미터에서 사용자 ID 받기
+    user_id = request.args.get("user_id")
     stage = request.args.get("stage", "train")
+    
+    if not user_id:
+        def error_generator():
+            yield "data: [error] user_id가 필요합니다.\n\n"
+        
+        response = Response(error_generator(), mimetype="text/event-stream")
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response
+    
+    # 안전한 파일명으로 변환
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:50]
+    
     return ProcessManager.stream_logs(uid, stage)
-
-
-@app.route("/data-info")
-def data_info():
-    """데이터셋 정보 API"""
-    filename = request.args.get("file", "").strip()
-    info_type = request.args.get("type", "shape")
-    n = int(request.args.get("n", 5))
-    
-    info = DatasetManager.get_dataset_info(filename, info_type, n)
-    if info is None:
-        return jsonify({"error": "Dataset not found"}), 404
-    
-    return jsonify(info)
 
 
 @app.route("/download/<stage>")
 def download(stage):
-    """생성된 코드 다운로드"""
-    uid, workspace_path = WorkspaceManager.get_or_create_uid()
+    """생성된 코드 다운로드 - 사용자 ID 기반"""
+    # 🔹 쿼리 파라미터에서 사용자 ID 받기
+    user_id = request.args.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "user_id가 필요합니다."}), 400
+    
+    # 안전한 파일명으로 변환
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:50]
+    
+    workspace_path = WORKSPACE_DIR / uid
     
     file_map = {
         "pre": "preprocessing.py",
@@ -466,9 +603,14 @@ def download(stage):
     }
     
     if stage in file_map:
+        file_path = workspace_path / file_map[stage]
+        if not file_path.exists():
+            return jsonify({"error": f"{file_map[stage]} 파일이 없습니다. 먼저 코드를 생성해주세요."}), 404
+        
         return send_from_directory(workspace_path, file_map[stage], as_attachment=True)
     
     elif stage == "all":
+        # ZIP 파일 생성
         import zipfile
         zip_name = f"workspace_{uid}_{int(time.time())}.zip"
         zip_path = workspace_path / zip_name
@@ -479,6 +621,7 @@ def download(stage):
                 if file_path.exists():
                     zf.write(file_path, arcname=filename)
             
+            # inputs 파일들도 포함
             for s in ["pre", "model", "train", "eval"]:
                 input_file = workspace_path / f"inputs_{s}.json"
                 if input_file.exists():
@@ -487,6 +630,13 @@ def download(stage):
         return send_from_directory(workspace_path, zip_name, as_attachment=True)
     
     return jsonify({"error": "Unknown stage"}), 400
+
+
+
+@app.route("/app/<user_id>")
+def main_app_with_user(user_id):
+    """사용자 ID가 포함된 URL 지원"""
+    return redirect(url_for("main_app", user_id=user_id))
 
 
 # ===== 에러 핸들러 =====

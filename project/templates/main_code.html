@@ -8,18 +8,18 @@
 <!-- Preprocessing 코드 -->
 <div class="stage-pane" id="pane-code-pre">
   <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-    <a class="btn" href="/download/pre">preprocessing.py 다운로드</a>
+    <!-- 🔹 다운로드 링크를 버튼으로 변경 (JavaScript로 처리) -->
+    <button class="btn" onclick="downloadCode('pre')">preprocessing.py 다운로드</button>
     <button class="btn btn-run" data-run="pre">이 단계 실행</button>
     <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
   </div>
-  <!-- 🔹 조건부 렌더링 제거, 항상 코드 요소 표시 -->
   <pre class="code" id="code-pre">{% if snippet_pre %}{{ snippet_pre | e }}{% else %}# 전처리 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>
 
 <!-- ModelDesign 코드 -->
 <div class="stage-pane" id="pane-code-model" hidden>
   <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-    <a class="btn" href="/download/model">model.py 다운로드</a>
+    <button class="btn" onclick="downloadCode('model')">model.py 다운로드</button>
     <button class="btn btn-run" data-run="model">이 단계 실행</button>
     <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
   </div>
@@ -29,7 +29,7 @@
 <!-- Training 코드 -->
 <div class="stage-pane" id="pane-code-train" hidden>
   <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-    <a class="btn" href="/download/train">training.py 다운로드</a>
+    <button class="btn" onclick="downloadCode('train')">training.py 다운로드</button>
     <button class="btn btn-run" data-run="train">이 단계 실행</button>
     <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
   </div>
@@ -39,9 +39,45 @@
 <!-- Evaluation 코드 -->
 <div class="stage-pane" id="pane-code-eval" hidden>
   <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-    <a class="btn" href="/download/eval">evaluation.py 다운로드</a>
+    <button class="btn" onclick="downloadCode('eval')">evaluation.py 다운로드</button>
     <button class="btn btn-run" data-run="eval">이 단계 실행</button>
     <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
   </div>
   <pre class="code" id="code-eval">{% if snippet_eval %}{{ snippet_eval | e }}{% else %}# 평가 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>
+
+<!-- 🔹 다운로드 함수 추가 -->
+<script>
+function downloadCode(stage) {
+  // 사용자 ID 가져오기
+  const userIdInput = document.getElementById('user-id-input');
+  const userId = userIdInput ? userIdInput.value.trim() || 'anonymous' : 'anonymous';
+  
+  if (userId === 'anonymous') {
+    alert('사용자 ID를 입력해주세요!');
+    if (userIdInput) userIdInput.focus();
+    return;
+  }
+  
+  // 사용자 ID를 포함한 다운로드 URL
+  const downloadUrl = `/download/${stage}?user_id=${encodeURIComponent(userId)}`;
+  
+  // 새 창에서 다운로드
+  window.open(downloadUrl, '_blank');
+}
+
+// 전체 다운로드 함수도 추가
+function downloadAll() {
+  const userIdInput = document.getElementById('user-id-input');
+  const userId = userIdInput ? userIdInput.value.trim() || 'anonymous' : 'anonymous';
+  
+  if (userId === 'anonymous') {
+    alert('사용자 ID를 입력해주세요!');
+    if (userIdInput) userIdInput.focus();
+    return;
+  }
+  
+  const downloadUrl = `/download/all?user_id=${encodeURIComponent(userId)}`;
+  window.open(downloadUrl, '_blank');
+}
+</script>

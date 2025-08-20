@@ -1,17 +1,17 @@
-[eval][2025-08-20 11:48:21] === EVALUATION START ===
-[eval][2025-08-20 11:48:21] Using device: cuda
-[eval][2025-08-20 11:48:21] Test data loaded: 2000 samples
+[eval][2025-08-20 14:00:53] === EVALUATION START ===
+[eval][2025-08-20 14:00:53] Using device: cuda
+[eval][2025-08-20 14:00:53] Test data loaded: 2000 samples
 Model created with 804,554 parameters
-Model loaded from /home/bm_ai/project/workspace/d803e615385c4000acac7cd74324b7fc/artifacts/best_model.pth
-[eval][2025-08-20 11:48:21] Running inference...
+Model loaded from /home/bm_ai/project/workspace/asdfasdf/artifacts/best_model.pth
+[eval][2025-08-20 14:00:53] Running inference...
 
 Evaluating:   0%|          | 0/16 [00:00<?, ?it/s]
-Evaluating:   6%|▋         | 1/16 [00:00<00:07,  1.94it/s]
-Evaluating: 100%|██████████| 16/16 [00:00<00:00, 28.29it/s]
-[eval][2025-08-20 11:48:22] 
+Evaluating:   6%|▋         | 1/16 [00:00<00:02,  5.54it/s]
+Evaluating: 100%|██████████| 16/16 [00:00<00:00, 76.13it/s]
+[eval][2025-08-20 14:00:53] 
 Calculating metrics...
-[eval][2025-08-20 11:48:23] Accuracy: 0.8575
-[eval][2025-08-20 11:48:23] 
+[eval][2025-08-20 14:00:55] Accuracy: 0.8575
+[eval][2025-08-20 14:00:55] 
 Classification Report:
               precision    recall  f1-score   support
 
@@ -30,7 +30,7 @@ Classification Report:
    macro avg       0.86      0.85      0.85      2000
 weighted avg       0.86      0.86      0.86      2000
 
-[eval][2025-08-20 11:48:23] 
+[eval][2025-08-20 14:00:55] 
 Confusion Matrix:
 [[190   0   2   2   0   1   7   0   1   0]
  [  0 212   1   1   0   0   1   0   1   0]
@@ -42,9 +42,9 @@ Confusion Matrix:
  [  0   7   3   1   2   0   0 167   1   6]
  [  4   9   6   8   0   2   0   6 147   4]
  [  2   3   0   3   9   1   0  17   1 162]]
-[eval][2025-08-20 11:48:24] Confusion matrix saved to /home/bm_ai/project/workspace/d803e615385c4000acac7cd74324b7fc/artifacts/confusion_matrix.png
-[eval][2025-08-20 11:48:24] Prediction samples saved to /home/bm_ai/project/workspace/d803e615385c4000acac7cd74324b7fc/artifacts/prediction_samples.png
-[eval][2025-08-20 11:48:25] Misclassified samples saved to /home/bm_ai/project/workspace/d803e615385c4000acac7cd74324b7fc/artifacts/misclassified_samples.png
-[eval][2025-08-20 11:48:25] 
-Results saved to /home/bm_ai/project/workspace/d803e615385c4000acac7cd74324b7fc/artifacts/evaluation_results.json
-[eval][2025-08-20 11:48:25] === EVALUATION DONE ===
+[eval][2025-08-20 14:00:56] Confusion matrix saved to /home/bm_ai/project/workspace/asdfasdf/artifacts/confusion_matrix.png
+[eval][2025-08-20 14:00:56] Prediction samples saved to /home/bm_ai/project/workspace/asdfasdf/artifacts/prediction_samples.png
+[eval][2025-08-20 14:00:57] Misclassified samples saved to /home/bm_ai/project/workspace/asdfasdf/artifacts/misclassified_samples.png
+[eval][2025-08-20 14:00:57] 
+Results saved to /home/bm_ai/project/workspace/asdfasdf/artifacts/evaluation_results.json
+[eval][2025-08-20 14:00:57] === EVALUATION DONE ===

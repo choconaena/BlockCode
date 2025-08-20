@@ -1,3 +1,21 @@
+<!-- 🔹 사용자 ID 입력 섹션 추가 -->
+<div style="background:#e3f2fd; padding:0.75rem; margin-bottom:1rem; border-radius:5px; border:2px solid #1976d2;">
+  <h3 style="margin:0 0 0.5rem 0; color:#1976d2; font-size:1rem;">👤 사용자 식별</h3>
+  <label>사용자 ID:</label>
+  <input type="text" 
+         id="user-id-input" 
+         name="user_id" 
+         value="{{ current_user_id or 'anonymous' }}" 
+         placeholder="예: hong_gildong" 
+         pattern="[a-zA-Z0-9_-]+" 
+         title="영문, 숫자, _, - 만 사용 가능"
+         style="width:100%; padding:0.5rem; margin-top:0.25rem; border:1px solid #ccc; border-radius:3px;">
+  <small style="color:#666; font-size:0.85em;">
+    * 영문, 숫자, _, - 만 사용 가능<br>
+    * 이 ID로 작업 파일이 저장됩니다
+  </small>
+</div>
+
 <form method="post" action="/convert">
   <!-- 좌측 대분류 탭 -->
   <div class="left-tabs">
@@ -375,3 +393,23 @@
     <button type="submit" class="btn" name="stage" value="all">🔗 전체 변환</button>
   </div>
 </form>
+
+<!-- 🔹 사용자 ID 동기화 스크립트 -->
+<script>
+(function() {
+  const userIdInput = document.getElementById('user-id-input');
+  const hiddenUserIdInput = document.getElementById('hidden-user-id');
+  
+  // 사용자 ID 입력 시 숨겨진 필드와 동기화
+  userIdInput.addEventListener('input', function() {
+    let value = this.value;
+    // 안전한 문자만 허용
+    value = value.replace(/[^a-zA-Z0-9_-]/g, '');
+    this.value = value;
+    hiddenUserIdInput.value = value || 'anonymous';
+  });
+  
+  // 초기 동기화
+  hiddenUserIdInput.value = userIdInput.value || 'anonymous';
+})();
+</script>

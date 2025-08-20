@@ -79,7 +79,7 @@ function initDependentFields() {
   }
 }
 
-// ---- 🔹 AJAX 폼 제출 처리 (새로 추가) ----
+// ---- 🔹 AJAX 폼 제출 처리 (사용자 ID 포함) ----
 function initAjaxFormSubmit() {
   const form = document.querySelector('form[method="post"]');
   if (!form) return;
@@ -88,6 +88,16 @@ function initAjaxFormSubmit() {
     e.preventDefault(); // 기본 폼 제출 방지
     
     try {
+      // 사용자 ID 검증
+      const userIdInput = document.getElementById('user-id-input');
+      const userId = userIdInput.value.trim();
+      
+      if (!userId || userId === 'anonymous') {
+        showNotification('사용자 ID를 입력해주세요!', 'error');
+        userIdInput.focus();
+        return;
+      }
+      
       // 제출 버튼에서 stage 값 가져오기
       const clickedButton = document.activeElement;
       const stage = clickedButton.getAttribute('value') || 'all';
@@ -119,9 +129,16 @@ function initAjaxFormSubmit() {
         block.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = false);
       });
 
-      // FormData 생성 및 stage 추가
+      // FormData 생성 및 stage, user_id 추가
       const formData = new FormData(form);
       formData.set('stage', stage);
+      formData.set('user_id', userId);  // 🔹 사용자 ID 포함
+      
+      console.log('전송할 데이터:', {
+        stage: stage,
+        user_id: userId,
+        // 기타 폼 데이터들...
+      });
       
       // AJAX 요청
       const response = await fetch('/convert', {
@@ -130,7 +147,8 @@ function initAjaxFormSubmit() {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
       const codeText = await response.text();
@@ -149,13 +167,14 @@ function initAjaxFormSubmit() {
       }
       
       // 성공 메시지
-      showNotification('코드 변환이 완료되었습니다!', 'success');
+      showNotification(`코드 변환 완료! (사용자: ${userId})`, 'success');
       
     } catch (error) {
       console.error('폼 제출 오류:', error);
       showNotification(`오류 발생: ${error.message}`, 'error');
     } finally {
       // 버튼 상태 복원
+      const clickedButton = document.activeElement;
       clickedButton.textContent = originalText;
       clickedButton.disabled = false;
     }
