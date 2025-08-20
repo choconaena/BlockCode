@@ -7,56 +7,41 @@
 
 <!-- Preprocessing 코드 -->
 <div class="stage-pane" id="pane-code-pre">
-  {% if snippet_pre %}
-    <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-      <a class="btn" href="/download/pre">preprocessing.py 다운로드</a>
-      <button class="btn btn-run" data-run="pre">이 단계 실행</button>
-      <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
-    </div>
-    <pre class="code">{{ snippet_pre | e }}</pre>
-  {% else %}
-    <p class="muted">Preprocessing 스니펫이 비어 있습니다.</p>
-  {% endif %}
+  <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
+    <a class="btn" href="/download/pre">preprocessing.py 다운로드</a>
+    <button class="btn btn-run" data-run="pre">이 단계 실행</button>
+    <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
+  </div>
+  <!-- 🔹 조건부 렌더링 제거, 항상 코드 요소 표시 -->
+  <pre class="code" id="code-pre">{% if snippet_pre %}{{ snippet_pre | e }}{% else %}# 전처리 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>
 
 <!-- ModelDesign 코드 -->
 <div class="stage-pane" id="pane-code-model" hidden>
-  {% if snippet_model %}
-    <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-      <a class="btn" href="/download/model">model.py 다운로드</a>
-      <button class="btn btn-run" data-run="model">이 단계 실행</button>
-      <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
-    </div>
-    <pre class="code">{{ snippet_model | e }}</pre>
-  {% else %}
-    <p class="muted">ModelDesign 스니펫이 비어 있습니다.</p>
-  {% endif %}
+  <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
+    <a class="btn" href="/download/model">model.py 다운로드</a>
+    <button class="btn btn-run" data-run="model">이 단계 실행</button>
+    <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
+  </div>
+  <pre class="code" id="code-model">{% if snippet_model %}{{ snippet_model | e }}{% else %}# 모델 설계 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>
 
 <!-- Training 코드 -->
 <div class="stage-pane" id="pane-code-train" hidden>
-  {% if snippet_train %}
-    <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-      <a class="btn" href="/download/train">training.py 다운로드</a>
-      <button class="btn btn-run" data-run="train">이 단계 실행</button>
-      <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
-    </div>
-    <pre class="code">{{ snippet_train | e }}</pre>
-  {% else %}
-    <p class="muted">Training 스니펫이 비어 있습니다.</p>
-  {% endif %}
+  <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
+    <a class="btn" href="/download/train">training.py 다운로드</a>
+    <button class="btn btn-run" data-run="train">이 단계 실행</button>
+    <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
+  </div>
+  <pre class="code" id="code-train">{% if snippet_train %}{{ snippet_train | e }}{% else %}# 학습 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>
 
 <!-- Evaluation 코드 -->
 <div class="stage-pane" id="pane-code-eval" hidden>
-  {% if snippet_eval %}
-    <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
-      <a class="btn" href="/download/eval">evaluation.py 다운로드</a>
-      <button class="btn btn-run" data-run="eval">이 단계 실행</button>
-      <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
-    </div>
-    <pre class="code">{{ snippet_eval | e }}</pre>
-  {% else %}
-    <p class="muted">Evaluation 스니펫이 비어 있습니다.</p>
-  {% endif %}
+  <div style="display:flex; gap:.5rem; margin-bottom:.5rem;">
+    <a class="btn" href="/download/eval">evaluation.py 다운로드</a>
+    <button class="btn btn-run" data-run="eval">이 단계 실행</button>
+    <button class="btn" onclick="document.getElementById('tab-log').click()">로그 보기</button>
+  </div>
+  <pre class="code" id="code-eval">{% if snippet_eval %}{{ snippet_eval | e }}{% else %}# 평가 코드가 생성되면 여기에 표시됩니다.{% endif %}</pre>
 </div>

@@ -1,0 +1,21 @@
+[pre][2025-08-19 07:43:09] === PREPROCESSING START ===
+[pre][2025-08-19 07:43:09] START: 데이터 선택/로딩
+[pre][2025-08-19 07:43:09] END  : 데이터 선택/로딩 (elapsed=0.262s)
+[pre][2025-08-19 07:43:09] Train size: 8000, Test size: 2000
+[pre][2025-08-19 07:43:09] SKIP : 결측치 행 삭제
+[pre][2025-08-19 07:43:09] SKIP : 잘못된 라벨 삭제
+[pre][2025-08-19 07:43:09] START: 입력/라벨 분리(X/y)
+[pre][2025-08-19 07:43:09] X_train shape: (8000, 784), y_train shape: torch.Size([8000])
+[pre][2025-08-19 07:43:09] X_test shape: (2000, 784), y_test shape: torch.Size([2000])
+[pre][2025-08-19 07:43:09] END  : 입력/라벨 분리(X/y) (elapsed=0.000s)
+[pre][2025-08-19 07:43:09] START: 이미지 크기 변경 -> 28x28
+[pre][2025-08-19 07:43:10] Resized to: X_train torch.Size([8000, 1, 28, 28]), X_test torch.Size([2000, 1, 28, 28])
+[pre][2025-08-19 07:43:10] END  : 이미지 크기 변경 (elapsed=0.473s)
+[pre][2025-08-19 07:43:10] START: 이미지 증강 (방법=vflip, 파라미터=5)
+[pre][2025-08-19 07:43:10] Augmented to: X_train torch.Size([16000, 1, 28, 28]), X_test torch.Size([4000, 1, 28, 28])
+[pre][2025-08-19 07:43:10] END  : 이미지 증강 (elapsed=0.151s)
+[pre][2025-08-19 07:43:10] SKIP : 정규화
+[pre][2025-08-19 07:43:10] START: 전처리 결과 저장(dataset.pt)
+[pre][2025-08-19 07:43:10] Saved to: /home/bm_ai/project/workspace/89b35ddc86464d9d90a1bbc2d7d09f0c/data/dataset.pt
+[pre][2025-08-19 07:43:10] END  : 전처리 결과 저장 (elapsed=0.113s)
+[pre][2025-08-19 07:43:10] === PREPROCESSING DONE ===

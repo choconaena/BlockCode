@@ -327,3 +327,73 @@ workspace/<uid>/
 ### API 버전 관리
 - 현재 버전: v1.0
 - 버전 업데이트 시 `/api/v2/` 경로 사용 예정
+
+## 7. 블록 관련 명세 (Flask 연동 관점)
+
+### 7.1 블록 카테고리와 필수 블록
+- **Stage 분류**: `pre` | `model` | `train` | `eval`
+- **템플릿 식별자 규약**: HTML 내 각 블록은 `div.block` 요소이며, `block-<stage>` 클래스로 카테고리를, `block-required` 클래스로 필수 여부를 표시합니다.
+- **필수 블록 요약** (템플릿 기준):
+  - **pre**: `block-data-selection` (데이터 선택)
+  - **model**: `block-input`, `block-output`
+  - **train**: `block-loss`, `block-optim`, `block-train-options`
+  - **eval**: `block-metrics`
+
+참고: 필수 블록은 UI에서 고정(`.block-required`)되며 제거/비활성화하면 안 됩니다.
+
+### 7.2 블록 ↔ 폼 파라미터 매핑 규약
+- **네이밍 규칙**:
+  - 블록의 기능명은 스네이크케이스 파라미터로 전송됩니다. 예: `block-drop-na` → `drop_na` (checkbox)
+  - 다중 옵션은 `name[]`로 전송되며 서버에서 배열로 수집됩니다.
+- **데이터 타입 규칙**:
+  - checkbox: 존재 시 truthy("on"), 미전송 시 false로 간주. 서버는 JSON 저장 시 boolean으로 정규화하지 않고 원문을 유지합니다.
+  - number: 문자열로 전달되며, 제너레이터가 내부에서 캐스팅합니다.
+  - string: 공백 트리밍 후 사용.
+- **스테이지별 주요 파라미터**: 아래 표는 실 구현에서 사용하는 핵심만 발췌했으며, 전체 목록은 2.2 섹션의 테이블을 따릅니다.
+  - **pre**: `dataset`, `is_test`, `testdataset`, `a`, `drop_na`, `drop_bad`, `min_label`, `max_label`, `split_xy`, `resize_n`, `augment_method`, `augment_param`, `normalize`
+  - **model**: `input_w`, `input_h`, `input_c`, `conv1_filters`, `conv1_kernel`, `conv1_padding`, `conv1_activation`, `pool1_type`, `pool1_size`, `pool1_stride`, `use_conv2`, `conv2_filters`, `conv2_kernel`, `conv2_activation`, `use_dropout`, `dropout_p`, `dense_units`, `dense_activation`, `num_classes`
+  - **train**: `loss_method`, `optimizer_method`, `learning_rate`, `epochs`, `batch_size`, `patience`
+  - **eval**: `metrics[]`, `average`, `topk_k`, `show_classification_report`, `show_confusion_matrix`, `cm_normalize`, `viz_samples`, `viz_mis`, `eval_batch`, `num_classes`, `class_names`, `force_cpu`
+
+### 7.3 상태 저장과 복구
+- **세션 식별**: 서버는 최초 접근 시 `uid` 쿠키(httponly, samesite=Lax)를 설정합니다.
+- **입력 상태 저장**: 각 스테이지의 요청은 `workspace/<uid>/inputs_<stage>.json`에 저장됩니다.
+- **상태 복구**: GET `/app` 응답의 템플릿 변수 `form_state`로 병합된 상태를 제공합니다. UI는 이를 사용해 블록들의 초기값을 복원합니다.
+
+예시(`inputs_pre.json`):
+```json
+{
+  "dataset": "mnist_train.csv",
+  "drop_na": "on",
+  "a": "80",
+  "normalize": "0-1"
+}
+```
+
+### 7.4 블록-백엔드 처리 흐름
+1) 사용자가 블록 UI에서 옵션 설정 → form-data 구성
+2) POST `/convert` 호출
+   - `stage=all`이면 `pre/model/train/eval` 순서로 각 스테이지 코드 생성
+   - 각 스테이지별 생성 코드는 `workspace/<uid>/*.py`로 저장, 입력값은 `inputs_*.json`으로 저장
+3) 필요 시 POST `/run/<stage>`로 실행 시작 → 로그는 GET `/logs/stream?stage=<stage>`로 수신
+4) 생성된 파일은 GET `/download/<stage>` 로 다운로드 가능
+
+### 7.5 요청/응답 예시
+- 요청 예시(전처리 일부):
+```http
+POST /convert HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+stage=pre&dataset=mnist_train.csv&drop_na=on&a=80&normalize=0-1
+```
+- 성공 시: HTML(index.html) 재렌더링, 템플릿 변수에 `snippet_pre` 갱신됨
+
+### 7.6 유효성 및 에러 처리
+- **유효 스테이지**: `pre|model|train|eval|all` 이외는 400(`{"error":"Unknown stage"}`)
+- **데이터셋 검증**: GET `/data-info`로 사전 점검 권장. 존재하지 않는 파일은 404
+- **실행 전제**: `/run/<stage>`는 해당 스크립트 파일이 워크스페이스에 존재해야 함. 없으면 400(`... not found`)
+
+### 7.7 보안/안전 가이드 (블록 관련)
+- 입력값은 서버에서 그대로 JSON으로 저장되므로, 프론트엔드에서 기본 범위/타입 검증을 수행할 것
+- 파일명, 경로 등은 화이트리스트(데이터셋 폴더)로 제한됨. 임의 경로 전송 금지
+- 장시간 실행/대용량 로그의 경우 SSE 클라이언트에서 백오프를 적용할 것

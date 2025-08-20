@@ -38,6 +38,8 @@
   <!-- 🔹 로그 실행/SSE 스트림 JS 추가 -->
   <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
 
+
+  
   <script>
     (function(){
       // ---- 사용자별 키 (uid 쿠키 없으면 guest) ----
@@ -46,9 +48,9 @@
         return m ? decodeURIComponent(m[1]) : '';
       }
       const uid = getCookie('uid') || 'guest';
-      const KEY_MAIN = `aiBlocks:main:${uid}`;   // 'code' | 'data' | 'log'  ← 🔹 log 추가
-      const KEY_LEFT = `aiBlocks:left:${uid}`;   // 'pre'|'model'|'train'|'eval'
-      const KEY_CODE = `aiBlocks:code:${uid}`;   // 'pre'|'model'|'train'|'eval'
+      const KEY_MAIN = `aiBlocks:main:${uid}`;   
+      const KEY_LEFT = `aiBlocks:left:${uid}`;   
+      const KEY_CODE = `aiBlocks:code:${uid}`;   
       const KEY_FORM = `aiBlocks:form:${uid}`;
 
       // ---- 폼 값 저장/복원 (LocalStorage) ----
@@ -57,7 +59,6 @@
         if(!form) return;
         const data = {};
         const fd = new FormData(form);
-        // 같은 name 여러개(체크박스 등)는 배열로 저장
         for (const [k,v] of fd.entries()){
           if (k in data){
             Array.isArray(data[k]) ? data[k].push(v) : data[k]=[data[k], v];
@@ -65,6 +66,7 @@
         }
         localStorage.setItem(KEY_FORM, JSON.stringify(data));
       }
+      
       function restoreForm(){
         const form = document.querySelector('form');
         if(!form) return;
@@ -94,7 +96,7 @@
       }
 
       // ---- 탭 저장/복원 ----
-      function switchTab(active){  // 'code' | 'data' | 'log'
+      function switchTab(active){  
         document.getElementById('tab-code')?.classList.toggle('active', active==='code');
         document.getElementById('tab-data')?.classList.toggle('active', active==='data');
         document.getElementById('tab-log') ?.classList.toggle('active', active==='log');
@@ -105,17 +107,14 @@
       }
 
       function restoreTabs(){
-        // 메인 탭 복원 (log까지 포함)
         const main = localStorage.getItem(KEY_MAIN);
         if (main==='data') document.getElementById('tab-data')?.click();
         else if (main==='log') document.getElementById('tab-log')?.click();
         else document.getElementById('tab-code')?.click();
 
-        // 코드 탭
         const code = localStorage.getItem(KEY_CODE) || 'pre';
         document.querySelector(`.stage-tab[data-stage="${code}"]`)?.click();
 
-        // 좌측 탭
         const left = localStorage.getItem(KEY_LEFT) || 'pre';
         document.querySelector(`.left-tab[data-tab="${left}"]`)?.click();
       }
@@ -127,19 +126,15 @@
         if (form){
           form.addEventListener('input',  saveForm);
           form.addEventListener('change', saveForm);
-          // submit 시 비활성 요소도 제출되도록 강제 enable
-          form.addEventListener('submit', ()=>{
-            document.querySelectorAll('.block input, .block select, .block textarea').forEach(el=> el.disabled=false);
-            saveForm();
-          });
+          // 🔹 기존 submit 이벤트 리스너 제거 (AJAX로 대체)
+          // form.addEventListener('submit', ()=>{...}); // 이 부분 삭제
         }
 
-        // 탭 클릭 시 저장 (🔹 log 추가)
+        // 탭 클릭 시 저장
         document.getElementById('tab-code')?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'code'); switchTab('code');});
         document.getElementById('tab-data')?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'data'); switchTab('data');});
         document.getElementById('tab-log') ?.addEventListener('click', ()=>{localStorage.setItem(KEY_MAIN,'log');  switchTab('log'); });
 
-        // 코드/좌측 스테이지 탭 저장 (이미 페이지 내에 존재한다는 가정)
         document.querySelectorAll('.stage-tab').forEach(b=>{
           b.addEventListener('click', ()=> localStorage.setItem(KEY_CODE, b.dataset.stage||'pre'));
         });
@@ -148,7 +143,7 @@
         });
       });
 
-      // 모든 초기화 스크립트(tabs.js/sidebar.js)가 끝난 뒤 최종 복원
+      // 모든 초기화 스크립트가 끝난 뒤 최종 복원
       window.addEventListener('load', restoreTabs);
     })();
   </script>
