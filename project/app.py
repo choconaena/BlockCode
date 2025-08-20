@@ -638,6 +638,181 @@ def main_app_with_user(user_id):
     """사용자 ID가 포함된 URL 지원"""
     return redirect(url_for("main_app", user_id=user_id))
 
+'''
+@app.route("/result")
+
+뭔가 이런느낌으로 만들어서
+요청 들어오면 (마무리 결과보기 버튼)
+json으로 보내주는데
+1. accuracy값
+2. 혼동행렬 png
+3. 오분류 png
+4. 예측 샘플 png
+
+이렇게 보내줄거야
+'''
+
+# app.py에 추가할 결과보기 API 코드
+
+import base64
+import json
+import os
+from pathlib import Path
+
+@app.route("/result")
+def get_results():
+    """마무리 결과보기 API - 평가 결과를 JSON으로 반환"""
+    
+    # 🔹 사용자 ID 가져오기
+    user_id = request.args.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "user_id가 필요합니다."}), 400
+    
+    # 안전한 파일명으로 변환
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:50]
+    
+    workspace_path = WORKSPACE_DIR / uid
+    artifacts_dir = workspace_path / "artifacts"
+    
+    print(f"[INFO] /result 요청: user_id={uid}")
+    print(f"[INFO] artifacts 경로: {artifacts_dir}")
+    
+    try:
+        # 1. accuracy 값 읽기 (evaluation_results.json에서)
+        results_path = artifacts_dir / "evaluation_results.json"
+        accuracy = None
+        
+        if results_path.exists():
+            with open(results_path, 'r', encoding='utf-8') as f:
+                eval_results = json.load(f)
+                accuracy = eval_results.get('accuracy', None)
+                print(f"[INFO] Accuracy 값: {accuracy}")
+        else:
+            print(f"[WARNING] 평가 결과 파일이 없습니다: {results_path}")
+        
+        # 2. 이미지 파일들을 base64로 인코딩
+        def image_to_base64(image_path):
+            """이미지 파일을 base64 문자열로 변환"""
+            if not image_path.exists():
+                print(f"[WARNING] 이미지 파일이 없습니다: {image_path}")
+                return None
+            
+            try:
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                    base64_str = base64.b64encode(image_data).decode('utf-8')
+                    print(f"[INFO] 이미지 인코딩 완료: {image_path.name} ({len(base64_str)} chars)")
+                    return base64_str
+            except Exception as e:
+                print(f"[ERROR] 이미지 인코딩 실패 {image_path}: {e}")
+                return None
+        
+        # 혼동행렬 이미지
+        confusion_matrix_path = artifacts_dir / "confusion_matrix.png"
+        confusion_matrix_b64 = image_to_base64(confusion_matrix_path)
+        
+        # 오분류 샘플 이미지
+        misclassified_path = artifacts_dir / "misclassified_samples.png"
+        misclassified_b64 = image_to_base64(misclassified_path)
+        
+        # 예측 샘플 이미지
+        prediction_samples_path = artifacts_dir / "prediction_samples.png"
+        prediction_samples_b64 = image_to_base64(prediction_samples_path)
+        
+        # 3. 응답 JSON 구성
+        response_data = {
+            "ok": True,
+            "user_id": uid,
+            "accuracy": accuracy,
+            "confusion_matrix": confusion_matrix_b64,
+            "misclassified_samples": misclassified_b64,
+            "prediction_samples": prediction_samples_b64,
+            "message": "평가 결과를 성공적으로 가져왔습니다."
+        }
+        
+        # 4. 누락된 데이터 체크 및 경고
+        missing_items = []
+        if accuracy is None:
+            missing_items.append("accuracy")
+        if not confusion_matrix_b64:
+            missing_items.append("confusion_matrix")
+        if not misclassified_b64:
+            missing_items.append("misclassified_samples")
+        if not prediction_samples_b64:
+            missing_items.append("prediction_samples")
+        
+        if missing_items:
+            response_data["warning"] = f"일부 데이터가 누락되었습니다: {', '.join(missing_items)}"
+            response_data["message"] = "일부 결과가 누락된 상태로 반환되었습니다. 평가를 먼저 실행해주세요."
+        
+        print(f"[INFO] 응답 데이터 준비 완료. 누락된 항목: {missing_items}")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"[ERROR] /result 처리 중 오류: {e}")
+        return jsonify({
+            "error": f"결과 처리 중 오류 발생: {str(e)}",
+            "user_id": uid
+        }), 500
+
+
+# 🔹 결과 상태 확인용 보조 API (선택사항)
+@app.route("/result/status")
+def get_result_status():
+    """평가 결과 파일 존재 여부 확인"""
+    
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id가 필요합니다."}), 400
+    
+    import re
+    uid = re.sub(r'[^a-zA-Z0-9_-]', '_', user_id)[:50]
+    
+    workspace_path = WORKSPACE_DIR / uid
+    artifacts_dir = workspace_path / "artifacts"
+    
+    # 필요한 파일들 체크
+    files_status = {
+        "evaluation_results.json": (artifacts_dir / "evaluation_results.json").exists(),
+        "confusion_matrix.png": (artifacts_dir / "confusion_matrix.png").exists(),
+        "misclassified_samples.png": (artifacts_dir / "misclassified_samples.png").exists(),
+        "prediction_samples.png": (artifacts_dir / "prediction_samples.png").exists()
+    }
+    
+    all_ready = all(files_status.values())
+    
+    return jsonify({
+        "user_id": uid,
+        "ready": all_ready,
+        "files": files_status,
+        "message": "모든 결과 파일이 준비되었습니다." if all_ready else "일부 결과 파일이 누락되었습니다. 평가를 실행해주세요."
+    })
+
+
+# 🔹 CORS OPTIONS 핸들러 (필요시)
+@app.route("/result", methods=["OPTIONS"])
+def result_options():
+    """CORS preflight 요청 처리"""
+    response = make_response()
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+    response.headers['Access-Control-Max-Age'] = '86400'
+    return response
+
+@app.route("/result/status", methods=["OPTIONS"])
+def result_status_options():
+    """CORS preflight 요청 처리"""
+    response = make_response()
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Requested-With'
+    response.headers['Access-Control-Max-Age'] = '86400'
+    return response
+
 
 # ===== 에러 핸들러 =====
 
