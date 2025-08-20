@@ -508,60 +508,245 @@ async function apiRequest(url, options = {}) {
 
 
 -----------
-## result 추가
 
-### 1. `/result` 엔드포인트
-- **GET** 요청으로 `user_id` 파라미터 필수
-- 평가 결과를 JSON으로 반환:
-  ```json
-  {
-    "ok": true,
-    "user_id": "hong_gildong",
-    "accuracy": 0.8575,
-    "confusion_matrix": "iVBORw0KGgo...", // base64 문자열
-    "misclassified_samples": "iVBORw0KGgo...", // base64 문자열
-    "prediction_samples": "iVBORw0KGgo...", // base64 문자열
-    "message": "평가 결과를 성공적으로 가져왔습니다."
-  }
-  ```
+# AI 블록코딩 API 명세서 v2.1 (업데이트)
 
-### 2. `/result/status` 엔드포인트 (보조)
-- 결과 파일들의 존재 여부를 미리 확인
-- 프론트엔드에서 "결과보기" 버튼 활성화 여부 판단에 활용 가능
+## 변경 사항 요약
 
-## 사용 방법
+### 🆕 새로 추가된 엔드포인트
 
-### JavaScript에서 호출 예시:
-```javascript
-// 결과 상태 확인
-async function checkResultStatus(userId) {
-  const response = await fetch(`/result/status?user_id=${encodeURIComponent(userId)}`);
-  const status = await response.json();
-  return status.ready; // true/false
-}
+#### 1. GET `/result` - 마무리 결과보기
+**설명**: 평가 완료 후 결과 데이터를 JSON으로 반환  
+**쿼리 파라미터**:
+- `user_id` (필수): 사용자 식별자
 
-// 결과 가져오기
-async function getResults(userId) {
-  const response = await fetch(`/result?user_id=${encodeURIComponent(userId)}`);
-  const results = await response.json();
-  
-  if (results.ok) {
-    console.log('정확도:', results.accuracy);
-    
-    // 이미지 표시 예시
-    if (results.confusion_matrix) {
-      const img = document.createElement('img');
-      img.src = `data:image/png;base64,${results.confusion_matrix}`;
-      document.body.appendChild(img);
-    }
-  }
-  
-  return results;
+**응답 예시**:
+```json
+{
+  "ok": true,
+  "user_id": "hong_gildong",
+  "accuracy": 0.8575,
+  "confusion_matrix": "iVBORw0KGgo...", 
+  "misclassified_samples": "iVBORw0KGgo...",
+  "prediction_samples": "iVBORw0KGgo...",
+  "message": "평가 결과를 성공적으로 가져왔습니다.",
+  "warning": "일부 데이터가 누락되었습니다: misclassified_samples"
 }
 ```
 
-## 에러 처리
+**응답 필드**:
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| ok | boolean | 성공 여부 |
+| user_id | string | 사용자 ID |
+| accuracy | number/null | 정확도 값 (0~1) |
+| confusion_matrix | string/null | 혼동행렬 PNG (base64) |
+| misclassified_samples | string/null | 오분류 샘플 PNG (base64) |
+| prediction_samples | string/null | 예측 샘플 PNG (base64) |
+| message | string | 상태 메시지 |
+| warning | string | 경고 메시지 (선택) |
 
-- **사용자 ID 누락**: `400 Bad Request`
-- **파일 접근 오류**: `500 Internal Server Error`
-- **일부 파일 누락**: 성공 응답이지만 `warning` 필드 포함
+**에러 응답**:
+- `400`: user_id 누락
+- `500`: 서버 처리 오류
+
+---
+
+#### 2. GET `/result/status` - 결과 상태 확인
+**설명**: 평가 결과 파일들의 존재 여부 확인  
+**쿼리 파라미터**:
+- `user_id` (필수): 사용자 식별자
+
+**응답 예시**:
+```json
+{
+  "user_id": "hong_gildong",
+  "ready": true,
+  "files": {
+    "evaluation_results.json": true,
+    "confusion_matrix.png": true,
+    "misclassified_samples.png": false,
+    "prediction_samples.png": true
+  },
+  "message": "일부 결과 파일이 누락되었습니다. 평가를 실행해주세요."
+}
+```
+
+---
+
+#### 3. GET `/debug/dataset` - 데이터셋 디버그 정보
+**설명**: 데이터셋 폴더 상태 및 파일 정보 조회 (개발용)
+
+**응답 예시**:
+```json
+{
+  "dataset_dir": "/project/dataset",
+  "dataset_dir_exists": true,
+  "csv_files": ["mnist_train.csv", "mnist_test.csv"],
+  "file_details": [
+    {
+      "name": "mnist_train.csv",
+      "size_mb": 109.5,
+      "rows": 60000,
+      "cols": 785,
+      "columns": ["label", "pixel0", "pixel1", "pixel2", "pixel3"]
+    }
+  ]
+}
+```
+
+---
+
+### 🔧 수정된 엔드포인트
+
+#### GET `/data-info` - 데이터셋 정보 조회 (개선)
+**변경사항**:
+- 에러 처리 강화
+- 상세한 로깅 추가
+- 이미지 처리 안정성 개선
+
+**새로운 에러 응답**:
+```json
+// 파일 없음
+{
+  "error": "파일을 찾을 수 없습니다: mnist_train.csv"
+}
+
+// 이미지 처리 실패
+{
+  "images": [],
+  "error": "이미지 형태의 데이터가 아닙니다."
+}
+```
+
+---
+
+## 완전한 API 엔드포인트 목록
+
+### 1. 페이지 렌더링
+- `GET /` → `GET /app` 리다이렉트
+- `GET /app` → 메인 애플리케이션 페이지
+
+### 2. 코드 생성 및 변환
+- `POST /convert` → 블록 설정을 Python 코드로 변환
+- `OPTIONS /convert` → CORS preflight
+
+### 3. 코드 실행 및 로그
+- `POST /run/<stage>` → 특정 스테이지 코드 실행
+- `GET /logs/stream` → 실행 로그 스트리밍 (SSE)
+
+### 4. 데이터 정보 조회
+- `GET /data-info` → CSV 데이터셋 정보 조회 *(개선)*
+- `OPTIONS /data-info` → CORS preflight
+
+### 5. 파일 다운로드
+- `GET /download/<stage>` → 생성된 코드 파일 다운로드
+
+### 6. **🆕 결과 조회**
+- `GET /result` → **평가 결과 데이터 반환** *(신규)*
+- `GET /result/status` → **결과 파일 상태 확인** *(신규)*
+- `OPTIONS /result` → CORS preflight *(신규)*
+- `OPTIONS /result/status` → CORS preflight *(신규)*
+
+### 7. **🆕 디버그**
+- `GET /debug/dataset` → **데이터셋 상태 확인** *(신규)*
+
+---
+
+## 사용 시나리오 (업데이트)
+
+### 기본 워크플로우
+1. `GET /app?user_id=hong_gildong` → 페이지 로드
+2. `POST /convert` → 코드 생성
+3. `POST /run/pre` → 전처리 실행
+4. `POST /run/model` → 모델 생성
+5. `POST /run/train` → 학습 실행
+6. `POST /run/eval` → 평가 실행
+7. **🆕 `GET /result/status?user_id=hong_gildong`** → 결과 준비 확인
+8. **🆕 `GET /result?user_id=hong_gildong`** → 최종 결과 조회
+
+### 문제 해결 워크플로우
+1. `GET /debug/dataset` → 데이터셋 문제 진단
+2. `GET /data-info?file=mnist_train.csv&type=shape` → 파일 상태 확인
+
+---
+
+## 버전 정보
+- **현재 버전**: v2.1
+- **이전 버전**: v2.0
+- **주요 변경**: 결과 조회 API 추가, 데이터 정보 API 개선, 디버그 API 추가
+
+---
+
+## 프론트엔드 통합 예시 (업데이트)
+
+```javascript
+// 🆕 결과 조회 클라이언트 코드
+class AIBlockCodingClient {
+  constructor(userId) {
+    this.userId = userId;
+    this.baseURL = 'http://127.0.0.1:9000';
+  }
+
+  // 기존 메서드들...
+  
+  // 🆕 결과 상태 확인
+  async checkResultStatus() {
+    const response = await fetch(`${this.baseURL}/result/status?user_id=${encodeURIComponent(this.userId)}`);
+    const status = await response.json();
+    return status.ready;
+  }
+
+  // 🆕 최종 결과 가져오기
+  async getResults() {
+    const response = await fetch(`${this.baseURL}/result?user_id=${encodeURIComponent(this.userId)}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    }
+    
+    return await response.json();
+  }
+
+  // 🆕 결과 이미지 표시
+  displayResultImages(results) {
+    if (results.confusion_matrix) {
+      const img = document.createElement('img');
+      img.src = `data:image/png;base64,${results.confusion_matrix}`;
+      img.alt = 'Confusion Matrix';
+      document.getElementById('confusion-matrix-container').appendChild(img);
+    }
+    
+    if (results.accuracy !== null) {
+      document.getElementById('accuracy-display').textContent = 
+        `정확도: ${(results.accuracy * 100).toFixed(2)}%`;
+    }
+  }
+}
+
+// 사용 예시
+const client = new AIBlockCodingClient('hong_gildong');
+
+// 🆕 마무리 결과보기 버튼 클릭 시
+document.getElementById('show-results-btn').addEventListener('click', async () => {
+  try {
+    const isReady = await client.checkResultStatus();
+    
+    if (!isReady) {
+      alert('평가를 먼저 실행해주세요!');
+      return;
+    }
+    
+    const results = await client.getResults();
+    client.displayResultImages(results);
+    
+    if (results.warning) {
+      console.warn('경고:', results.warning);
+    }
+    
+  } catch (error) {
+    console.error('결과 조회 실패:', error);
+    alert(`결과 조회 실패: ${error.message}`);
+  }
+});
+```
