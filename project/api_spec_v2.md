@@ -503,3 +503,65 @@ async function apiRequest(url, options = {}) {
 ### 6.2 API 버전 관리
 - 현재 버전: v2
 - 호환성: 사용자 ID 기반 시스템으로 전환
+
+
+
+
+-----------
+## result 추가
+
+### 1. `/result` 엔드포인트
+- **GET** 요청으로 `user_id` 파라미터 필수
+- 평가 결과를 JSON으로 반환:
+  ```json
+  {
+    "ok": true,
+    "user_id": "hong_gildong",
+    "accuracy": 0.8575,
+    "confusion_matrix": "iVBORw0KGgo...", // base64 문자열
+    "misclassified_samples": "iVBORw0KGgo...", // base64 문자열
+    "prediction_samples": "iVBORw0KGgo...", // base64 문자열
+    "message": "평가 결과를 성공적으로 가져왔습니다."
+  }
+  ```
+
+### 2. `/result/status` 엔드포인트 (보조)
+- 결과 파일들의 존재 여부를 미리 확인
+- 프론트엔드에서 "결과보기" 버튼 활성화 여부 판단에 활용 가능
+
+## 사용 방법
+
+### JavaScript에서 호출 예시:
+```javascript
+// 결과 상태 확인
+async function checkResultStatus(userId) {
+  const response = await fetch(`/result/status?user_id=${encodeURIComponent(userId)}`);
+  const status = await response.json();
+  return status.ready; // true/false
+}
+
+// 결과 가져오기
+async function getResults(userId) {
+  const response = await fetch(`/result?user_id=${encodeURIComponent(userId)}`);
+  const results = await response.json();
+  
+  if (results.ok) {
+    console.log('정확도:', results.accuracy);
+    
+    // 이미지 표시 예시
+    if (results.confusion_matrix) {
+      const img = document.createElement('img');
+      img.src = `data:image/png;base64,${results.confusion_matrix}`;
+      document.body.appendChild(img);
+    }
+  }
+  
+  return results;
+}
+```
+
+## 에러 처리
+
+- **사용자 ID 누락**: `400 Bad Request`
+- **파일 접근 오류**: `500 Internal Server Error`
+- **일부 파일 누락**: 성공 응답이지만 `warning` 필드 포함
